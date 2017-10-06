@@ -4,6 +4,8 @@
 #include <math.h>
 #include "ukf.h"
 #include "tools.h"
+#include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -38,7 +40,12 @@ int main()
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
-  h.onMessage([&ukf,&tools,&estimations,&ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  std::string NIS_radar_filename = "NIS_radar.dat";
+  std::ofstream ostrmRadar(NIS_radar_filename, std::ios::binary);
+  std::string NIS_laser_filename = "NIS_laser.dat";
+  std::ofstream ostrmLaser(NIS_laser_filename, std::ios::binary);
+
+  h.onMessage([&ukf,&tools,&estimations,&ground_truth,&ostrmLaser,&ostrmRadar](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -107,6 +114,14 @@ int main()
           
           //Call ProcessMeasurment(meas_package) for Kalman filter
     	  ukf.ProcessMeasurement(meas_package);    	  
+
+        if (sensor_type.compare("L") == 0) {
+          ostrmLaser.write(reinterpret_cast<char*>(&ukf.NIS_laser_), sizeof ukf.NIS_laser_);
+          ostrmLaser.flush();
+        } else if (sensor_type.compare("R") == 0) {
+          ostrmRadar.write(reinterpret_cast<char*>(&ukf.NIS_radar_), sizeof ukf.NIS_radar_);
+          ostrmRadar.flush();
+        }
 
     	  //Push the current estimated x,y positon from the Kalman filter's state vector
 
